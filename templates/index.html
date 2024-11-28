@@ -3,24 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мини сайт на Flask</title>
+    <title>Чат-бот</title>
     <style>
         body {
             font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
             background-color: #f0f0f0;
-            text-align: center;
-            margin-top: 100px;
         }
-        h1 {
-            color: #007bff;
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            height: 80%;
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
-        p {
-            font-size: 1.2em;
+        .chat-box {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding-right: 10px;
+        }
+        .input-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .input-box {
+            width: 70%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+        .send-button,
+        .upload-button,
+        .train-button {
+            width: 30%;
+            padding: 10px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .send-button {
+            background-color: #007bff;
+        }
+        .upload-button {
+            background-color: #28a745;
+        }
+        .train-button {
+            background-color: #ffc107;
+        }
+        .send-button:hover,
+        .upload-button:hover,
+        .train-button:hover {
+            opacity: 0.8; /* Простой эффект наведения */
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user-message {
+            background-color: #d1e7ff;
+            text-align: right;
+        }
+        .bot-message {
+            background-color: #f1f1f1;
+            text-align: left;
         }
     </style>
 </head>
 <body>
-    <h1>Привет, Jiroslav52!</h1>
-    <p>Поздравляем с регистрацией на GitHub!</p>
+    <div class="chat-container">
+        <div class="chat-box" id="chat-box">
+            <!-- Сообщения будут отображаться здесь -->
+        </div>
+        <div class="input-container">
+            <input type="text" id="user-input" class="input-box" placeholder="Напишите сообщение..." />
+            <button class="send-button" id="send-btn">Отправить</button>
+        </div>
+        <div class="input-container">
+            <input type="file" id="file-input" accept=".pdf,.doc,.docx,.json" />
+            <button class="upload-button" id="upload-btn">Загрузить файл</button>
+        </div>
+        <div class="input-container">
+            <button class="train-button" id="train-btn">Обучить модель</button>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            // Обработка отправки сообщения
+            $('#send-btn').click(function () {
+                var userMessage = $('#user-input').val();
+                if (userMessage.trim() === "") return;
+
+                // Добавляем сообщение пользователя в окно чата
+                $('#chat-box').append('<div class="message user-message">' + userMessage + '</div>');
+                $('#user-input').val('');
+                $('#chat-box').scrollTop($('#chat-box')[0].scrollHeight);
+
+                // Отправляем запрос на сервер
+                $.ajax({
+                    url: '/get_response',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ message: userMessage }),
+                    success: function (data) {
+                        var botResponse = data.response;
+                        $('#chat-box').append('<div class="message bot-message">' + botResponse + '</div>');
+                        $('#chat-box').scrollTop($('#chat-box')[0].scrollHeight);
+                    },
+                    error: function () {
+                        $('#chat-box').append('<div class="message bot-message">Ошибка при обработке запроса.</div>');
+                    }
+                });
+            });
+
+            // Обработка загрузки файла
+            $('#upload-btn').click(function () {
+                var fileInput = $('#file-input')[0];
+                var file = fileInput.files[0];
+                if (!file) {
+                    alert('Пожалуйста, выберите файл для загрузки.');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                $.ajax({
+                    url: '/upload',
+                    type: 'POST',
+                    processData: false,
+                    contentType: false,
+                    data: formData,
+                    success: function (data) {
+                        if (data.success) {
+                            alert(data.success);
+                        } else {
+                            alert(data.error);
+                        }
+                    },
+                    error: function () {
+                        alert('Ошибка при загрузке файла.');
+                    }
+                });
+            });
+
+            // Обработка тренировки модели
+            $('#train-btn').click(function () {
+                $.ajax({
+                    url: '/train',
+                    type: 'POST',
+                    success: function (data) {
+                        alert(data.success || data.error);
+                    },
+                    error: function () {
+                        alert('Ошибка при обучении модели.');
+                    }
+                });
+            });
+
+            // Обработчик нажатия Enter для отправки сообщения
+            $('#user-input').keypress(function (e) {
+                if (e.which === 13) { // Enter key
+                    $('#send-btn').click();
+                }
+            });
+        });
+    </script>
 </body>
 </html>
